@@ -1,0 +1,13 @@
+name: pdfstamp
+description: Offline PDF Stamper
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  syncfusion_flutter_pdf: ^23.2.3
+  file_picker: ^8.0.0
+  path_provider: ^2.1.2
