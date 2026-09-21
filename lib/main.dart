@@ -27,6 +27,15 @@ class PdfStamperHome extends StatefulWidget {
 class _PdfStamperHomeState extends State<PdfStamperHome> {
   String _status = 'Ready to process';
   bool _isProcessing = false;
+  
+  // 1. Add a controller to capture the password
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _processPdfNatively() async {
     setState(() {
@@ -48,7 +57,27 @@ class _PdfStamperHomeState extends State<PdfStamperHome> {
 
       File file = File(result.files.single.path!);
       List<int> bytes = await file.readAsBytes();
-      PdfDocument document = PdfDocument(inputBytes: bytes);
+      
+      PdfDocument document;
+      
+      // 2. Safely attempt to open the PDF with or without the password
+      try {
+        if (_passwordController.text.isNotEmpty) {
+          document = PdfDocument(inputBytes: bytes, password: _passwordController.text);
+        } else {
+          document = PdfDocument(inputBytes: bytes);
+        }
+      } catch (e) {
+        if (e.toString().contains('encrypted') || e.toString().contains('password')) {
+           setState(() {
+             _status = '✗ Error: PDF is password protected. Enter password below.';
+             _isProcessing = false;
+           });
+           return;
+        }
+        rethrow;
+      }
+
       bool modified = false;
 
       for (int i = 0; i < document.form.fields.count; i++) {
@@ -58,7 +87,7 @@ class _PdfStamperHomeState extends State<PdfStamperHome> {
           PdfPage page = field.page!;
           double w = bounds.width;
           double h = bounds.height;
-
+          
           double p1x = bounds.left + (w * 0.38);
           double p1y = bounds.top + (h * 0.45);
           double p2x = bounds.left + (w * 0.48);
@@ -98,7 +127,7 @@ class _PdfStamperHomeState extends State<PdfStamperHome> {
       Directory? outputDir = await getDownloadsDirectory(); 
       String fileName = file.path.split('/').last.replaceAll('.pdf', '_stamped.pdf');
       String outputPath = '${outputDir!.path}/$fileName';
-
+      
       await File(outputPath).writeAsBytes(outBytes);
 
       setState(() {
@@ -123,11 +152,27 @@ class _PdfStamperHomeState extends State<PdfStamperHome> {
             children: [
               Text(_status, textAlign: TextAlign.center),
               const SizedBox(height: 20),
+              
+              // 3. Add the UI TextField for the password
+              SizedBox(
+                width: 300,
+                child: TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'PDF Password (Optional)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
               ElevatedButton(
                 onPressed: _isProcessing ? null : _processPdfNatively,
                 child: _isProcessing 
                   ? const CircularProgressIndicator() 
-                  : const Text('Select & Stamp PDF'),
+                  : const Text('Select & Stamp PDF'), //
               ),
             ],
           ),
