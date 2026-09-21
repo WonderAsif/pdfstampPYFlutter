@@ -25,6 +25,20 @@ jobs:
       - name: Generate Android Boilerplate
         run: flutter create . --platforms android
 
+      - name: Force all plugins to SDK 36
+        run: |
+          cat <<EOF >> android/build.gradle
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 36
+                      }
+                  }
+              }
+          }
+          EOF
+
       - name: Install Dependencies
         run: flutter pub get
 
