@@ -25,22 +25,18 @@ jobs:
       - name: Generate Android Boilerplate
         run: flutter create . --platforms android
 
-      - name: Force all plugins to SDK 36
-        run: |
-          cat <<EOF >> android/build.gradle
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          compileSdkVersion 36
-                      }
-                  }
-              }
-          }
-          EOF
-
       - name: Install Dependencies
         run: flutter pub get
+
+      - name: Patch SDK Versions
+        run: |
+          # Swap hardcoded SDK versions in downloaded plugins from pub-cache
+          find /home/runner/.pub-cache/hosted/pub.dev/ -name "build.gradle" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} +
+          find /home/runner/.pub-cache/hosted/pub.dev/ -name "build.gradle" -exec sed -i 's/compileSdk [0-9]*/compileSdk 36/g' {} +
+          
+          # Force the main app module to SDK 36
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle.kts || true
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle || true
 
       - name: Build APK
         run: flutter build apk --release
